@@ -150,4 +150,3 @@ def check_cor_and_remove(train_df, test_df, i_cols, new_columns, remove=False):
 
     return train_df, test_df
 
-
