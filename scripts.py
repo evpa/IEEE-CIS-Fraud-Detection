@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from tqdm import tqdm_notebook as tqdm
 
 
 def values_normalization(dt_df, periods, columns):
@@ -149,4 +150,76 @@ def check_cor_and_remove(train_df, test_df, i_cols, new_columns, remove=False):
                 del train_df[col], test_df[col]
 
     return train_df, test_df
+
+
+def search_min_multi_vals(vals):
+    pass_vals = []
+    min_multi_vals = []
+    for val in tqdm(vals):
+        tmp_vals_1 = vals[np.where(vals%val == 0)]
+        if len(tmp_vals_1) > 2:
+            tmp_vals_2 = [val / tmp_val for tmp_val in val/vals if tmp_val.is_integer()]
+            min_val = min(tmp_vals_2)
+            if min_val not in min_multi_vals:
+                min_multi_vals.append(min_val)
+        else:
+            pass_vals.append(val)
+    print('min_multi_vals: {}'.format(len(min_multi_vals)))
+    print('pass_vals: {}'.format(len(pass_vals)))
+    return min_multi_vals, pass_vals
+
+
+def adjust_vals(min_multi_vals, pass_vals):
+    rm_vals = []
+    pass_array = np.array(pass_vals)
+    for val in min_multi_vals:
+        rm_vals.extend(list(pass_array[np.where(pass_array % val == 0)]))
+
+    u_rm_vals = set(rm_vals)
+
+    add_multi_vals = list(set(pass_vals).difference(u_rm_vals))
+
+    assert len(set(min_multi_vals).intersection(set(add_multi_vals))) == 0, print(
+        'something error, please check process.')
+
+    multi_vals = []
+    multi_vals.extend(min_multi_vals)
+    multi_vals.extend(add_multi_vals)
+
+    print('multi_vals: {}'.format(len(multi_vals)))
+
+    return multi_vals
+
+
+def category_mapping(val_category_dict, raw_array):
+    category_array = np.zeros(len(raw_array))
+    for val, category in tqdm(val_category_dict.items()):
+        category_array[np.where(raw_array%val==0)] = category
+
+    # zero
+    category_array[np.where(raw_array == 0)] = -1
+    # nan
+    category_array[np.where(np.isnan(raw_array))] = -2
+    category_array = category_array.astype('int')
+
+    assert np.all(raw_array[category_array==-1]==0), print('something error, please check zero process.')
+    assert np.all(np.isnan(raw_array[category_array==-2])), print('something error, please check nan process.')
+    return category_array
+
+
+def category_pipeline(v_feats, df):
+    v_categories = {}
+    for v_feat in v_feats:
+        print('RUN: {}'.format(v_feat))
+        v_vals = df[v_feat].unique()
+        min_multi_vals, pass_vals = search_min_multi_vals(v_vals)
+        adjusted_multi_vals = adjust_vals(min_multi_vals, pass_vals)
+
+        val_category_dict = {val: category for val, category in zip(adjusted_multi_vals, range(len(adjusted_multi_vals)))}
+
+        raw_array = df[v_feat].values
+        v_category = category_mapping(val_category_dict, raw_array)
+        v_categories[v_feat] = v_category
+    return v_categories
+
 
