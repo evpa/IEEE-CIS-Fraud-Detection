@@ -1,3 +1,7 @@
+"""
+Some scripts for frequency encoding, aggregation, normalization. Didn't use any of it in the end model.
+"""
+
 import pandas as pd
 import numpy as np
 from tqdm import tqdm_notebook as tqdm
